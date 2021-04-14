@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres
+    container_name: db
+    ports:
+      - "5433:5432"
+    volumes:
+      # - db-data:/var/lib/postgresql/data
+      - ./initiate_sql:/docker-entrypoint-initdb.d/
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app
+    expose:
+      - 8000
+    restart: always
+    environment:
+      - POSTGRES_DB_NAME=discountcode
+      - POSTGRES_DB_USERNAME=discountcode
+      - POSTGRES_DB_PASS=discountcode
+      - POSTGRES_DB_HOST=db
+      - POSTGRES_DB_PORT=5432
+    command: >
+            bash -c "python manage.py makemigrations base
+            && python manage.py makemigrations discount_code
+            && python manage.py migrate
+            && python manage.py shell < initial_script.py
+            && python manage.py runserver 0.0.0.0:8000"
+    # volumes:
+    #   - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  # rabbitmq:
+  #   image: rabbitmq:3.8.8-management-alpine
+  #   hostname: rabbitmq
+  #   container_name: rabbitmq
+  #   ports:
+  #     - "5672:5672"
+
+  # celery:
+  #   build: .
+  #   # restart: "no"
+  #   container_name: celery
+  #   command: celery -A app worker -l info
+  #   #ToDo Don't use root user
+  #   environment:
+  #     - C_FORCE_ROOT=true
+  #   volumes:
+  #     - .:/app
+  #   depends_on:
+  #     - rabbitmq
+  #     - db
+
+volumes:
+  db-data:
